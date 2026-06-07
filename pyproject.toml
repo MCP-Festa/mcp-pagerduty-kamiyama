@@ -1,0 +1,11 @@
+[project]
+name = "mcp-pagerduty-kamiyama"
+version = "0.1.0"
+description = "PagerDuty MCP Server via SSE"
+requires-python = ">=3.11"
+dependencies = [
+    "fastmcp>=2.0.0",
+    "httpx>=0.27.0",
+    "python-dotenv>=1.0.0",
+]
+
