@@ -1,0 +1,11 @@
+services:
+  mlflow:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/data
+    restart: unless-stopped
+
+volumes:
+  mlflow_data:

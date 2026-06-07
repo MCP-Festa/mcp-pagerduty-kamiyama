@@ -1,0 +1,12 @@
+{
+  "name": "mlflow-codex",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "Patch and utilities for @mlflow/codex notify-hook tracing",
+  "scripts": {
+    "postinstall": "node scripts/patch-mlflow-codex.mjs",
+    "patch:mlflow-codex": "node scripts/patch-mlflow-codex.mjs",
+    "test": "node --test tests/notify-hook.test.mjs"
+  }
+}

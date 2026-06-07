@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mlflow-codex"
+version = "0.1.0"
+description = "Import Codex session JSONL files into MLflow traces."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "mlflow>=3.1",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.11",
+]
+
+[project.scripts]
+mlflow-codex = "mlflow_codex.cli:main"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

@@ -52,8 +52,10 @@ MLFLOW_TRACKING_URI=http://172.16.11.7:5000
 各ツール呼び出しは `@mcp_trace` により1呼び出し1トレースとして記録され、PagerDuty API への
 HTTP 呼び出しは `mlflow_span` で子スパンとして記録されます（`pagerduty.list_incidents` など）。
 
-トレースの送信先となる MLflow サーバーのアドレスは `.env` の `MLFLOW_TRACKING_URI` で指定してください
-（デプロイ先サーバーには `mlflow_codex` モジュールがインストール済みです）。
+トレースの送信先となる MLflow サーバーのアドレスは `.env` の `MLFLOW_TRACKING_URI` で指定してください。
+
+`mlflow_codex` モジュールは同ディレクトリ配下の [`mlflow-codex/`](./mlflow-codex) をローカルパス依存として
+`pyproject.toml`（`[tool.uv.sources]`）から参照しており、`uv sync` 実行時に自動でインストールされます。
 
 ## 起動方法
 
