@@ -5,8 +5,10 @@ from typing import Optional
 import httpx
 from dotenv import load_dotenv
 from fastmcp import FastMCP
+from mlflow_codex.mcp import setup_mlflow, mcp_trace, mlflow_span
 
 load_dotenv()
+setup_mlflow()
 
 PAGERDUTY_API_KEY = os.environ["PAGERDUTY_API_KEY"]
 BASE_URL = "https://api.pagerduty.com"
@@ -74,6 +76,7 @@ def _clean_incident(incident: dict) -> dict:
 
 
 @mcp.tool()
+@mcp_trace
 async def list_recent_incidents(
     status: Optional[str] = "triggered,acknowledged",
     days: int = 7,
@@ -102,14 +105,19 @@ async def list_recent_incidents(
             params["statuses[]"].append(s)
 
     async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            f"{BASE_URL}/incidents",
-            headers=_headers(),
-            params=params,
-            timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
+        async with mlflow_span("pagerduty.list_incidents") as span:
+            resp = await client.get(
+                f"{BASE_URL}/incidents",
+                headers=_headers(),
+                params=params,
+                timeout=30,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            if span:
+                span.set_attribute(
+                    "pagerduty.result_count", len(data.get("incidents", []))
+                )
 
     incidents = [_clean_incident(i) for i in data.get("incidents", [])]
     return {
@@ -121,6 +129,7 @@ async def list_recent_incidents(
 
 
 @mcp.tool()
+@mcp_trace
 async def get_incident(incident_id: str) -> dict:
     """指定したインシデントの詳細を取得する。
 
@@ -128,18 +137,22 @@ async def get_incident(incident_id: str) -> dict:
         incident_id: PagerDuty インシデントID（例: "P1234567"）。
     """
     async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            f"{BASE_URL}/incidents/{incident_id}",
-            headers=_headers(),
-            timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
+        async with mlflow_span("pagerduty.get_incident") as span:
+            resp = await client.get(
+                f"{BASE_URL}/incidents/{incident_id}",
+                headers=_headers(),
+                timeout=30,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            if span:
+                span.set_attribute("pagerduty.incident_id", incident_id)
 
     return _clean_incident(data.get("incident", {}))
 
 
 @mcp.tool()
+@mcp_trace
 async def get_incident_notes(incident_id: str) -> dict:
     """インシデントに付いているノート（コメント）一覧を取得する。
 
@@ -147,13 +160,18 @@ async def get_incident_notes(incident_id: str) -> dict:
         incident_id: PagerDuty インシデントID（例: "P1234567"）。
     """
     async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            f"{BASE_URL}/incidents/{incident_id}/notes",
-            headers=_headers(),
-            timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
+        async with mlflow_span("pagerduty.get_incident_notes") as span:
+            resp = await client.get(
+                f"{BASE_URL}/incidents/{incident_id}/notes",
+                headers=_headers(),
+                timeout=30,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            if span:
+                span.set_attribute(
+                    "pagerduty.result_count", len(data.get("notes", []))
+                )
 
     notes = [
         {
@@ -168,6 +186,7 @@ async def get_incident_notes(incident_id: str) -> dict:
 
 
 @mcp.tool()
+@mcp_trace
 async def get_incident_log_entries(
     incident_id: str,
     limit: int = 20,
@@ -179,14 +198,19 @@ async def get_incident_log_entries(
         limit: 取得件数の上限（デフォルト: 20）。
     """
     async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            f"{BASE_URL}/incidents/{incident_id}/log_entries",
-            headers=_headers(),
-            params={"limit": min(limit, 100)},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
+        async with mlflow_span("pagerduty.get_incident_log_entries") as span:
+            resp = await client.get(
+                f"{BASE_URL}/incidents/{incident_id}/log_entries",
+                headers=_headers(),
+                params={"limit": min(limit, 100)},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            if span:
+                span.set_attribute(
+                    "pagerduty.result_count", len(data.get("log_entries", []))
+                )
 
     entries = [
         {
@@ -202,6 +226,7 @@ async def get_incident_log_entries(
 
 
 @mcp.tool()
+@mcp_trace
 async def list_services(limit: int = 25) -> dict:
     """PagerDuty に登録されているサービス一覧を取得する。
 
@@ -209,14 +234,19 @@ async def list_services(limit: int = 25) -> dict:
         limit: 取得件数の上限（1〜100、デフォルト: 25）。
     """
     async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            f"{BASE_URL}/services",
-            headers=_headers(),
-            params={"limit": min(limit, 100), "sort_by": "name"},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
+        async with mlflow_span("pagerduty.list_services") as span:
+            resp = await client.get(
+                f"{BASE_URL}/services",
+                headers=_headers(),
+                params={"limit": min(limit, 100), "sort_by": "name"},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            if span:
+                span.set_attribute(
+                    "pagerduty.result_count", len(data.get("services", []))
+                )
 
     services = [
         {
@@ -243,6 +273,7 @@ async def list_services(limit: int = 25) -> dict:
 
 
 @mcp.tool()
+@mcp_trace
 async def list_teams(limit: int = 25) -> dict:
     """PagerDuty に登録されているチーム一覧を取得する。
 
@@ -250,14 +281,19 @@ async def list_teams(limit: int = 25) -> dict:
         limit: 取得件数の上限（1〜100、デフォルト: 25）。
     """
     async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            f"{BASE_URL}/teams",
-            headers=_headers(),
-            params={"limit": min(limit, 100)},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
+        async with mlflow_span("pagerduty.list_teams") as span:
+            resp = await client.get(
+                f"{BASE_URL}/teams",
+                headers=_headers(),
+                params={"limit": min(limit, 100)},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            if span:
+                span.set_attribute(
+                    "pagerduty.result_count", len(data.get("teams", []))
+                )
 
     teams = [
         {
@@ -275,6 +311,7 @@ async def list_teams(limit: int = 25) -> dict:
 
 
 @mcp.tool()
+@mcp_trace
 async def list_escalation_policies(limit: int = 25) -> dict:
     """エスカレーションポリシー一覧を取得する。
 
@@ -282,14 +319,19 @@ async def list_escalation_policies(limit: int = 25) -> dict:
         limit: 取得件数の上限（1〜100、デフォルト: 25）。
     """
     async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            f"{BASE_URL}/escalation_policies",
-            headers=_headers(),
-            params={"limit": min(limit, 100), "sort_by": "name"},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
+        async with mlflow_span("pagerduty.list_escalation_policies") as span:
+            resp = await client.get(
+                f"{BASE_URL}/escalation_policies",
+                headers=_headers(),
+                params={"limit": min(limit, 100), "sort_by": "name"},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            if span:
+                span.set_attribute(
+                    "pagerduty.result_count", len(data.get("escalation_policies", []))
+                )
 
     policies = [
         {
@@ -311,4 +353,4 @@ async def list_escalation_policies(limit: int = 25) -> dict:
 
 
 if __name__ == "__main__":
-    mcp.run(transport="sse", host="0.0.0.0", port=8007)
+    mcp.run(transport="streamable-http", host="0.0.0.0", port=8007, path="/mcp")

@@ -1,7 +1,7 @@
 # mcp-pagerduty-kamiyama
 
 PagerDuty REST API を利用した MCP（Model Context Protocol）サーバーです。
-Python の FastMCP モジュールを使用し、SSE トランスポートでポート `8007` で待ち受けます。
+Python の FastMCP モジュールを使用し、Streamable HTTP トランスポート（`/mcp`）でポート `8007` で待ち受けます。
 
 最近のインシデント一覧やアサイン状況を確認できます。
 ユーザーのメールアドレスや電話番号などの個人情報は取得しません（`assignee` の `id` と表示名のみ返却）。
@@ -41,9 +41,19 @@ cp .env.example .env
 
 ```
 PAGERDUTY_API_KEY=実際のAPIキー
+MLFLOW_TRACKING_URI=http://172.16.11.7:5000
 ```
 
 > APIキーは PagerDuty の管理画面 → **Integrations → API Access Keys** から発行できます（Read-only 推奨）。
+
+## MLflow トレース
+
+`setup_mlflow()` が起動時に `MLFLOW_TRACKING_URI` 環境変数を読み込み、MLflow を初期化します。
+各ツール呼び出しは `@mcp_trace` により1呼び出し1トレースとして記録され、PagerDuty API への
+HTTP 呼び出しは `mlflow_span` で子スパンとして記録されます（`pagerduty.list_incidents` など）。
+
+トレースの送信先となる MLflow サーバーのアドレスは `.env` の `MLFLOW_TRACKING_URI` で指定してください
+（デプロイ先サーバーには `mlflow_codex` モジュールがインストール済みです）。
 
 ## 起動方法
 
@@ -85,10 +95,10 @@ uv run python server.py
 
 ## 動作確認
 
-サーバーが起動すると SSE エンドポイントが立ち上がります。
+サーバーが起動すると Streamable HTTP エンドポイントが立ち上がります。
 
 ```
-http://localhost:8007/sse
+http://localhost:8007/mcp
 ```
 
-MCP クライアント（Claude Desktop など）からこの URL を SSE サーバーとして登録すれば、`list_recent_incidents` などのツールが利用できます。
+MCP クライアント（Claude Desktop など）からこの URL を Streamable HTTP サーバーとして登録すれば、`list_recent_incidents` などのツールが利用できます。
